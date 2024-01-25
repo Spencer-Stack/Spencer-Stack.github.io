@@ -44,12 +44,12 @@ class VisualController {
         this.ver_sel = $('#vertical_selector');
         this.sel_target = null;
         let _this = this;
-        // setTimeout(function(){
-        //     _this.introSequence();
-        // }, 50);
+        setTimeout(function(){
+            _this.introSequence();
+        }, 50);
 
         this.intro_sequence_index = 0;
-        this.continueSequence = false;
+        this.continueSequence = true;
     }
 
     initialiseMenu(){
