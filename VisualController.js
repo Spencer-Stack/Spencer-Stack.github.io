@@ -2,6 +2,7 @@ class VisualController {
     constructor() {
         this.virtual_controller = new VirtualController(this);
         this.logic_controller = null; // gets set by creation of logic controller
+        this.account_controller = null;
         this.workspace = $('#workspace'); // Select the workspace using jQuery
         this.block_id = 0;
         this.blocks = {};
@@ -13,6 +14,7 @@ class VisualController {
 
         // WorkSpace offset vertical
         this.wsov = this.workspace.offset().top;
+        this.wsoh = this.workspace.offset().left;
 
         // Initialize event handlers
         this.initializeDragAndDrop();
@@ -162,6 +164,7 @@ class VisualController {
                         this.continueSequence = false;
                         _this.moveSelTarget(null);
                         $(document).off("click keydown");
+                        this.intro_sequence_index = 0;
                     } else {
                         // Run next event
                         _this.runEvent();
@@ -179,6 +182,7 @@ class VisualController {
             this.text_index += 1;
         } else{
             this.continueSequence = false;
+            this.intro_sequence_index = 0;
             this.hideTextBubble();
         }
     }
@@ -201,6 +205,22 @@ class VisualController {
         this.block_id += 1;
 
         return newBlock;
+    }
+
+    reset(blocks, snaps){
+        this.workspace.empty();
+        this.block_id = Object.keys(blocks).length;
+        this.blocks = blocks;
+        this.dragging_block = null; // Initialize dragging_block to null
+        this.dragging_block_offset = { x: 0, y: 0 }; // Initialize the offset
+        this.chunk = null;
+        this.snapped_connections = snaps;
+
+        for (var key of Object.keys(this.blocks)){
+            let block = this.blocks[key];
+            block.updatePosition(block.x, block.y); // move back by offset
+            this.workspace.append(block.element);
+        }
     }
 
     // Initialize drag and drop behavior
@@ -573,6 +593,17 @@ class VisualController {
         $('.block[data-tab="' + selectedTab + '"]').show();
     }
 
+    showInfoAlert(message) {
+        Swal.fire({
+            title: 'Information',
+            text: message,
+            icon: 'info', // Use 'info' for informational messages
+            showCancelButton: false, // No cancel button for info alerts
+            confirmButtonColor: '#3085d6',
+            confirmButtonText: 'OK'
+        });
+    }
+
     // Initialize action buttons
     initializeActionButtons() {
         let _this = this;
@@ -595,13 +626,17 @@ class VisualController {
             _this.logic_controller.reset();
             _this.virtual_controller.reset();
             _this.setConsole("");
-            _this.logic_controller.parseVisual(_this.blocks, _this.snapped_connections);
+            let parse_result = _this.logic_controller.parseVisual(_this.blocks, _this.snapped_connections);
             let controllers = {
                 'visual_controller': _this,
                 'virtual_controller': _this.virtual_controller,
                 'logic_controller': _this.logic_controller
             };
-            _this.logic_controller.execute(controllers);
+            if (parse_result["res"]){
+                _this.logic_controller.execute(controllers);
+            } else{
+                _this.showInfoAlert(parse_result['text']);
+            }
         });
 
         $('#stop').on('click', function () {
@@ -609,23 +644,22 @@ class VisualController {
                 return;
             }
             // Call the logic controller's stop function
-            _this.logic_controller.stopExecution();
-            _this.setConsole("Program was stopped by you");
+            _this.logic_controller.stopExecution("user_stop");
         });
 
         $('#load').on('click', function () {
             if (_this.continueSequence){
                 return;
             }
-            // Call the logic controller's load function
-            _this.playAnimation();
+            $("#overlay").fadeIn(300);
+            _this.account_controller.populateLoadTable();
         });
 
         $('#save').on('click', function () {
             if (_this.continueSequence){
                 return;
             }
-            // Call the logic controller's save function
+            $('#saveProgramModal').modal('show'); // Hide the modal after saving
         });
     }
 
